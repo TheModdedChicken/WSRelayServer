@@ -1,8 +1,12 @@
 import { WebSocketServer, WebSocket } from "ws"
+import express from 'express'
+import http from 'http'
 import { Snowflake } from "nodejs-snowflake"
 import url from "url"
 
-const wss = new WebSocketServer({ port: 8080 });
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
 
 interface WSLink {
 	id: string
@@ -27,7 +31,7 @@ wss.on('connection', function connection(ws, req) {
 		link.server.on('message', (data) => {
 			const curLink: WSLink | undefined = WSLinks.find(l => l.id === link.id)
 			if (!curLink || !curLink.client) return ws.close();
-			curLink.client.send(data, (err) => { 
+			curLink.client.send(data.toString(), (err) => { 
 				if (err) ws.send(JSON.stringify({ wsrs_error: "client:received_error" })) 
 			})
 		})
@@ -43,7 +47,7 @@ wss.on('connection', function connection(ws, req) {
 	link.client.on('message', (data) => {
 		const curLink: WSLink | undefined = WSLinks.find(l => l.id === link.id)
 		if (!curLink || !curLink.server) return ws.close();
-		curLink.server.send(data, (err) => { 
+		curLink.server.send(data.toString(), (err) => { 
 			if (err) ws.send(JSON.stringify({ wsrs_error: "client:received_error" })) 
 		})
 	})
@@ -57,3 +61,9 @@ wss.on('connection', function connection(ws, req) {
 
 	WSLinks.push(link)
 });
+
+app.all('/ping', (req, res) => {
+	res.send("Pong!")
+})
+
+server.listen(8080, () => console.log("Listening on port 8080"))
